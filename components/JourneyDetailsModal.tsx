@@ -18,6 +18,7 @@ interface JourneyDetailsModalProps {
   journey: JourneyOption | null;
   onClose: () => void;
   onSave?: (journey: JourneyOption) => void;
+  onTrackTrain?: (trainNumber: string, trainName?: string) => void;
   isSaved?: boolean;
 }
 
@@ -25,6 +26,7 @@ export const JourneyDetailsModal: React.FC<JourneyDetailsModalProps> = ({
   journey,
   onClose,
   onSave,
+  onTrackTrain,
   isSaved = false,
 }) => {
   if (!journey) return null;
@@ -91,6 +93,20 @@ export const JourneyDetailsModal: React.FC<JourneyDetailsModalProps> = ({
                     <span>•</span>
                     <span>{leg.totalHalts} intermediate halts</span>
                   </div>
+
+                  {onTrackTrain && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onTrackTrain(leg.trainNumber, leg.trainName);
+                      }}
+                      className="w-full mt-2 py-1.5 px-3 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/30 text-cyan-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                    >
+                      <Train className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Where is my Train? (All Halts & Live Track)</span>
+                    </button>
+                  )}
 
                   {/* Live Status if attached */}
                   {leg.liveStatus && (

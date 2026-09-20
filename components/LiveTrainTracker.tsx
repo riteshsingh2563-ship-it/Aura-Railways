@@ -14,7 +14,13 @@ import {
 } from 'lucide-react';
 import type { LiveTrainStatusResponse, TrainLookupResult } from '@/lib/railradar';
 
-export const LiveTrainTracker: React.FC = () => {
+interface LiveTrainTrackerProps {
+  onOpenWhereIsMyTrain?: (trainNumber: string, trainName?: string) => void;
+}
+
+export const LiveTrainTracker: React.FC<LiveTrainTrackerProps> = ({
+  onOpenWhereIsMyTrain,
+}) => {
   const [trainQuery, setTrainQuery] = useState('12833');
   const [selectedTrainNumber, setSelectedTrainNumber] = useState('12833');
   const [suggestions, setSuggestions] = useState<TrainLookupResult[]>([]);
@@ -292,6 +298,18 @@ export const LiveTrainTracker: React.FC = () => {
                 Live GPS
               </div>
             </div>
+          )}
+
+          {/* Full Route & Halts button */}
+          {onOpenWhereIsMyTrain && (
+            <button
+              type="button"
+              onClick={() => onOpenWhereIsMyTrain(liveData.trainNumber, liveData.trainName)}
+              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-950 via-cyan-900/90 to-blue-950 hover:from-cyan-900 hover:to-blue-900 border border-cyan-500/40 text-cyan-200 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.99]"
+            >
+              <Train className="w-4 h-4 text-cyan-300" />
+              <span>Where is my Train? (All Stations, Halts & Live GPS)</span>
+            </button>
           )}
         </div>
       )}

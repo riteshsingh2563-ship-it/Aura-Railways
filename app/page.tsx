@@ -27,6 +27,7 @@ import { StationBoardView } from '@/components/StationBoardView';
 import { SavedTripsView } from '@/components/SavedTripsView';
 import { ProfileView } from '@/components/ProfileView';
 import { AuthModal } from '@/components/AuthModal';
+import { WhereIsMyTrainModal } from '@/components/WhereIsMyTrainModal';
 import { NoRouteView } from '@/components/NoRouteView';
 import { ErrorView } from '@/components/ErrorView';
 import { saveTrip, SavedTrip } from '@/lib/firebase';
@@ -79,6 +80,7 @@ export default function HomePage() {
 
   // Modals & Details
   const [selectedJourney, setSelectedJourney] = useState<JourneyOption | null>(null);
+  const [whereIsMyTrain, setWhereIsMyTrain] = useState<{ number: string; name?: string } | null>(null);
   const [savedTripIds, setSavedTripIds] = useState<Set<string>>(new Set());
 
   // Quick Preset Queries
@@ -467,7 +469,19 @@ export default function HomePage() {
                       <JourneyCard
                         key={journey.id}
                         journey={journey}
-                        onSelect={(j) => setSelectedJourney(j)}
+                        onSelect={(j) => {
+                          if (j.type === 'direct') {
+                            // Direct train opens full Where is My Train route & halts immediately
+                            setWhereIsMyTrain({
+                              number: j.legs[0].trainNumber,
+                              name: j.legs[0].trainName,
+                            });
+                          } else {
+                            // Multi-leg opens timeline overview modal
+                            setSelectedJourney(j);
+                          }
+                        }}
+                        onTrackTrain={(num, name) => setWhereIsMyTrain({ number: num, name })}
                         onSave={(j) => handleSaveTrip(j)}
                         isSaved={savedTripIds.has(journey.id)}
                       />
@@ -532,9 +546,13 @@ export default function HomePage() {
             </div>
 
             {liveSubTab === 'tracker' ? (
-              <LiveTrainTracker />
+              <LiveTrainTracker
+                onOpenWhereIsMyTrain={(num, name) => setWhereIsMyTrain({ number: num, name })}
+              />
             ) : (
-              <StationBoardView />
+              <StationBoardView
+                onOpenWhereIsMyTrain={(num, name) => setWhereIsMyTrain({ number: num, name })}
+              />
             )}
           </div>
         )}
@@ -575,8 +593,17 @@ export default function HomePage() {
         journey={selectedJourney}
         onClose={() => setSelectedJourney(null)}
         onSave={(j) => handleSaveTrip(j)}
+        onTrackTrain={(num, name) => setWhereIsMyTrain({ number: num, name })}
         isSaved={selectedJourney ? savedTripIds.has(selectedJourney.id) : false}
       />
+
+      {whereIsMyTrain && (
+        <WhereIsMyTrainModal
+          trainNumber={whereIsMyTrain.number}
+          trainName={whereIsMyTrain.name}
+          onClose={() => setWhereIsMyTrain(null)}
+        />
+      )}
 
       <AuthModal
         isOpen={authModalOpen}

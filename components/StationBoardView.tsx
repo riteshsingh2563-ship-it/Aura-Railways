@@ -13,7 +13,13 @@ import {
 } from 'lucide-react';
 import type { StationLiveBoardResponse } from '@/lib/railradar';
 
-export const StationBoardView: React.FC = () => {
+interface StationBoardViewProps {
+  onOpenWhereIsMyTrain?: (trainNumber: string, trainName?: string) => void;
+}
+
+export const StationBoardView: React.FC<StationBoardViewProps> = ({
+  onOpenWhereIsMyTrain,
+}) => {
   const [stationCode, setStationCode] = useState('R');
   const [filterType, setFilterType] = useState<'all' | 'arrivals' | 'departures'>('all');
   const [loading, setLoading] = useState(false);
@@ -133,7 +139,10 @@ export const StationBoardView: React.FC = () => {
                 return (
                   <div
                     key={item.train.number + idx}
-                    className="p-3 rounded-xl glass-panel border border-white/10 hover:border-cyan-500/30 transition-all flex items-center justify-between gap-3 text-xs"
+                    onClick={() => onOpenWhereIsMyTrain && onOpenWhereIsMyTrain(item.train.number, item.train.name)}
+                    className={`p-3 rounded-xl glass-panel border border-white/10 hover:border-cyan-500/40 transition-all flex items-center justify-between gap-3 text-xs ${
+                      onOpenWhereIsMyTrain ? 'cursor-pointer hover:bg-slate-800/40' : ''
+                    }`}
                   >
                     <div className="space-y-1 truncate">
                       <div className="flex items-center gap-2">
@@ -143,6 +152,11 @@ export const StationBoardView: React.FC = () => {
                         <span className="font-bold text-slate-100 truncate">
                           {item.train.name}
                         </span>
+                        {onOpenWhereIsMyTrain && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950/80 text-cyan-400 border border-cyan-500/30 flex items-center gap-0.5">
+                            <Train className="w-2.5 h-2.5" /> Track
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-slate-400 truncate">
                         {item.train.source} → {item.train.destination}
