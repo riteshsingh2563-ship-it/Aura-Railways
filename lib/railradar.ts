@@ -181,6 +181,37 @@ export async function searchStations(query: string): Promise<StationLookupResult
   return [...activeStations, ...inactiveStations];
 }
 
+export interface TrainLookupResult {
+  number: string;
+  name: string;
+  type: string;
+  source: string;
+  sourceName?: string;
+  dest: string;
+  destName?: string;
+  popularity?: number;
+}
+
+export async function searchTrains(query: string): Promise<TrainLookupResult[]> {
+  const cleanQ = query.trim();
+  if (!cleanQ || cleanQ.length < 2) return [];
+
+  const endpoint = `/lookup/search/trains?q=${encodeURIComponent(cleanQ)}`;
+  const rawList = await fetchRailRadar<TrainLookupResult[]>(endpoint, { ttlSeconds: 43200 });
+  if (!Array.isArray(rawList)) return [];
+
+  return rawList.map((t) => ({
+    number: t.number,
+    name: t.name,
+    type: t.type || 'Express',
+    source: t.source,
+    sourceName: t.sourceName,
+    dest: t.dest,
+    destName: t.destName,
+    popularity: t.popularity ?? 0,
+  }));
+}
+
 export interface BetweenTrainsResponse {
   from: { code: string; name: string };
   to: { code: string; name: string };

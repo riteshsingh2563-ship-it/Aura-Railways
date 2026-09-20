@@ -129,31 +129,48 @@ export const StationAutocomplete: React.FC<StationAutocompleteProps> = ({
       </div>
 
       {/* Autocomplete Dropdown */}
-      {isOpen && suggestions.length > 0 && (
+      {isOpen && inputValue.trim().length >= 2 && !loading && (
         <div className="absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-xl glass-panel border border-cyan-500/20 shadow-2xl divide-y divide-white/5">
-          {suggestions.map((stn) => (
-            <button
-              key={stn.code}
-              type="button"
-              onClick={() => handleSelect(stn)}
-              className="w-full text-left px-3.5 py-2.5 hover:bg-cyan-950/40 flex items-center justify-between transition-colors group"
-            >
-              <div className="flex items-center gap-2.5 truncate">
-                <Train className="w-4 h-4 text-slate-400 group-hover:text-cyan-400 shrink-0" />
-                <div className="truncate">
-                  <p className="text-sm font-semibold text-slate-100 group-hover:text-cyan-200 truncate">
-                    {stn.name}
-                  </p>
-                  {stn.city && (
-                    <p className="text-[11px] text-slate-400">{stn.city}</p>
-                  )}
+          {suggestions.length > 0 ? (
+            suggestions.map((stn) => (
+              <button
+                key={stn.code}
+                type="button"
+                onClick={() => handleSelect(stn)}
+                className="w-full text-left px-3.5 py-2.5 hover:bg-cyan-950/40 flex items-center justify-between transition-colors group"
+              >
+                <div className="flex items-center gap-2.5 truncate">
+                  <Train className="w-4 h-4 text-slate-400 group-hover:text-cyan-400 shrink-0" />
+                  <div className="truncate">
+                    <p className="text-sm font-semibold text-slate-100 group-hover:text-cyan-200 truncate">
+                      {stn.name}
+                    </p>
+                    {stn.city && (
+                      <p className="text-[11px] text-slate-400">{stn.city}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-800 border border-white/10 text-cyan-300 ml-2">
-                {stn.code}
-              </span>
-            </button>
-          ))}
+                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-800 border border-white/10 text-cyan-300 ml-2">
+                  {stn.code}
+                </span>
+              </button>
+            ))
+          ) : (
+            <div className="p-3 text-center space-y-1">
+              <p className="text-xs font-semibold text-slate-300">
+                No active station found for &quot;{inputValue}&quot;
+              </p>
+              {/rajdhani|vande|express|shatabdi|mail|superfast|garib/i.test(inputValue) ? (
+                <p className="text-[11px] text-amber-300 font-medium">
+                  &quot;{inputValue}&quot; is a train name. Use the Train Tracker tab to search by train name.
+                </p>
+              ) : (
+                <p className="text-[11px] text-slate-400">
+                  Try entering city name (e.g. Raipur, Delhi, Varanasi) or code (e.g. R, NDLS, BSB).
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
