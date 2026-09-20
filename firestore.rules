@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User profile: only the user themselves can read or write their profile
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // User's saved trips subcollection
+      match /savedTrips/{tripId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // User's favorites subcollection
+      match /favorites/{favoriteId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // User's alerts subcollection
+      match /alerts/{alertId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Searches collection: write-only anonymized search analytics, no user PII
+    match /searches/{searchId} {
+      allow create: if true;
+      allow read, update, delete: if false;
+    }
+
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
