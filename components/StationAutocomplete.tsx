@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Train, Loader2 } from 'lucide-react';
+import { MapPin, Train, Loader2, X } from 'lucide-react';
 
 export interface StationItem {
   code: string;
@@ -29,24 +29,29 @@ export const StationAutocomplete: React.FC<StationAutocompleteProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const lastSelectedCodeRef = useRef<string | null>(value?.code || null);
 
-  // Sync when prop changes
+  // Sync ONLY when value changes externally (e.g. Swap button or preset route click)
   useEffect(() => {
-    if (value) {
-      setInputValue(`${value.name} (${value.code})`);
-    } else if (!isOpen) {
-      setInputValue('');
+    if (value?.code !== lastSelectedCodeRef.current) {
+      lastSelectedCodeRef.current = value?.code || null;
+      if (value) {
+        setInputValue(`${value.name} (${value.code})`);
+      } else {
+        setInputValue('');
+      }
     }
-  }, [value, isOpen]);
+  }, [value]);
 
-  // Debounced station search
+  // Debounced station search while typing
   useEffect(() => {
-    if (!isOpen || inputValue.trim().length < 2) {
+    const cleanQuery = inputValue.replace(/\([A-Za-z0-9\s-]+\)/, '').trim();
+    if (!isOpen || cleanQuery.length < 2) {
       setSuggestions([]);
       return;
     }
 
-    // Don't search if the input matches already selected station
+    // If input already exactly matches current selected station, skip API call
     if (value && inputValue === `${value.name} (${value.code})`) {
       return;
     }
@@ -54,8 +59,7 @@ export const StationAutocomplete: React.FC<StationAutocompleteProps> = ({
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const query = inputValue.replace(/\([A-Z0-9]+\)/, '').trim();
-        const res = await fetch(`/api/stations/search?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/stations/search?q=${encodeURIComponent(cleanQuery)}`);
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {
           setSuggestions(json.data);
@@ -65,7 +69,7 @@ export const StationAutocomplete: React.FC<StationAutocompleteProps> = ({
       } finally {
         setLoading(false);
       }
-    }, 200);
+    }, 250);
 
     return () => clearTimeout(timer);
   }, [inputValue, isOpen, value]);
@@ -82,50 +86,93 @@ export const StationAutocomplete: React.FC<StationAutocompleteProps> = ({
   }, []);
 
   const handleSelect = (stn: StationItem) => {
+    lastSelectedCodeRef.current = stn.code;
     onChange(stn);
     setInputValue(`${stn.name} (${stn.code})`);
     setIsOpen(false);
     setSuggestions([]);
   };
 
+  const handleClear = () => {
+    lastSelectedCodeRef.current = null;
+    onChange(null);
+    setInputValue('');
+    setSuggestions([]);
+  };
+
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
-      <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
-        {label}
-      </label>
+      <div className="flex items-center justify-between mb-1">
+        <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+          {label}
+        </label>
+        {value && (
+          <span className="text-[10px] font-mono font-bold text-cyan-300 bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-800">
+            {value.code}
+          </span>
+        )}
+      </div>
+
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-cyan-400">
           <MapPin className="w-4 h-4" />
         </div>
+
         <input
           type="text"
           value={inputValue}
           placeholder={placeholder}
           onFocus={() => setIsOpen(true)}
           onChange={(e) => {
-            const raw = e.target.value;
-            setInputValue(raw);
+            const val = e.target.value;
+            setInputValue(val);
             setIsOpen(true);
-            const clean = raw.replace(/\([A-Za-z0-9\s-]+\)/, '').trim();
-            if (clean.length > 0) {
-              onChange({ code: clean.toUpperCase(), name: clean });
-            } else {
+            if (val.trim().length === 0) {
+              lastSelectedCodeRef.current = null;
               onChange(null);
             }
           }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && suggestions.length > 0) {
+            if (e.key === 'Enter') {
               e.preventDefault();
-              handleSelect(suggestions[0]);
+              if (suggestions.length > 0) {
+                handleSelect(suggestions[0]);
+              } else if (inputValue.trim().length > 0) {
+                const raw = inputValue.replace(/\([A-Za-z0-9\s-]+\)/, '').trim();
+                handleSelect({ code: raw.toUpperCase(), name: raw });
+              }
             }
           }}
-          className="w-full pl-9 pr-8 py-2.5 rounded-xl glass-input text-sm placeholder-slate-500 font-medium"
+          onBlur={() => {
+            // Small delay to allow suggestion onMouseDown to execute first
+            setTimeout(() => {
+              if (!value && inputValue.trim().length > 0) {
+                if (suggestions.length > 0) {
+                  handleSelect(suggestions[0]);
+                } else {
+                  const raw = inputValue.replace(/\([A-Za-z0-9\s-]+\)/, '').trim();
+                  lastSelectedCodeRef.current = raw.toUpperCase();
+                  onChange({ code: raw.toUpperCase(), name: raw });
+                }
+              }
+            }, 200);
+          }}
+          className="w-full pl-9 pr-14 py-2.5 rounded-xl glass-input text-sm font-medium"
         />
-        {loading && (
-          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-            <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
-          </div>
-        )}
+
+        <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center gap-1">
+          {loading && <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />}
+          {inputValue && !loading && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="p-1 rounded-md text-slate-400 hover:text-white"
+              title="Clear input"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Autocomplete Dropdown */}
@@ -136,7 +183,10 @@ export const StationAutocomplete: React.FC<StationAutocompleteProps> = ({
               <button
                 key={stn.code}
                 type="button"
-                onClick={() => handleSelect(stn)}
+                onMouseDown={(e) => {
+                  e.preventDefault(); // Prevents onBlur from running before click
+                  handleSelect(stn);
+                }}
                 className="w-full text-left px-3.5 py-2.5 hover:bg-cyan-950/40 flex items-center justify-between transition-colors group"
               >
                 <div className="flex items-center gap-2.5 truncate">
