@@ -103,10 +103,20 @@ export const StationAutocomplete: React.FC<StationAutocompleteProps> = ({
           placeholder={placeholder}
           onFocus={() => setIsOpen(true)}
           onChange={(e) => {
-            setInputValue(e.target.value);
+            const raw = e.target.value;
+            setInputValue(raw);
             setIsOpen(true);
-            if (value && e.target.value !== `${value.name} (${value.code})`) {
+            const clean = raw.replace(/\([A-Za-z0-9\s-]+\)/, '').trim();
+            if (clean.length > 0) {
+              onChange({ code: clean.toUpperCase(), name: clean });
+            } else {
               onChange(null);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && suggestions.length > 0) {
+              e.preventDefault();
+              handleSelect(suggestions[0]);
             }
           }}
           className="w-full pl-9 pr-8 py-2.5 rounded-xl glass-input text-sm placeholder-slate-500 font-medium"

@@ -132,31 +132,53 @@ export async function searchStations(query: string): Promise<StationLookupResult
 
   if (!Array.isArray(rawList)) return [];
 
-  // Prioritize active stations, filter duplicates by code
+  // Filter valid station codes: 1-5 uppercase alphabetical chars, no spaces
   const seen = new Set<string>();
-  const normalized: StationLookupResult[] = [];
+  const activeStations: StationLookupResult[] = [];
+  const inactiveStations: StationLookupResult[] = [];
 
   for (const stn of rawList) {
     const code = (stn.code || '').toUpperCase().trim();
     if (!code || seen.has(code)) continue;
+
+    // Filter out obvious non-station metadata codes (like 'RAIPUR JN', 'XX-RPHRO')
+    if (!/^[A-Z0-9]{1,5}$/.test(code) || code.includes(' ')) {
+      continue;
+    }
+
     seen.add(code);
-    normalized.push({
+    const item: StationLookupResult = {
       code,
       name: (stn.name || code).replace(/ Station$/i, ''),
       city: stn.city || null,
       popularity: stn.popularity ?? 0,
       isActive: stn.isActive ?? true,
-    });
+    };
+
+    if (item.isActive) {
+      activeStations.push(item);
+    } else {
+      inactiveStations.push(item);
+    }
   }
 
-  // Sort: active first, then by popularity or exact code match
-  normalized.sort((a, b) => {
+  // Sort active stations first
+  const sortFn = (a: StationLookupResult, b: StationLookupResult) => {
     if (a.code === cleanQ.toUpperCase()) return -1;
     if (b.code === cleanQ.toUpperCase()) return 1;
+    if (a.name.toLowerCase() === cleanQ.toLowerCase()) return -1;
+    if (b.name.toLowerCase() === cleanQ.toLowerCase()) return 1;
+    // Prefer shorter canonical codes (e.g. 'R' over 'RPHR')
+    if (a.code.length !== b.code.length) {
+      return a.code.length - b.code.length;
+    }
     return (b.popularity || 0) - (a.popularity || 0);
-  });
+  };
 
-  return normalized;
+  activeStations.sort(sortFn);
+  inactiveStations.sort(sortFn);
+
+  return [...activeStations, ...inactiveStations];
 }
 
 export interface BetweenTrainsResponse {

@@ -196,18 +196,78 @@ export async function planJourneys(options: RoutingEngineOptions): Promise<{
     includeLiveStatus = false,
   } = options;
 
+const COMMON_CITY_ALIASES: Record<string, { code: string; name: string }> = {
+  'RAIPUR': { code: 'R', name: 'Raipur Jn' },
+  'RAIPUR JN': { code: 'R', name: 'Raipur Jn' },
+  'BILASPUR': { code: 'BSP', name: 'Bilaspur Jn' },
+  'VARANASI': { code: 'BSB', name: 'Varanasi Jn' },
+  'BANARAS': { code: 'BSBS', name: 'Banaras' },
+  'DELHI': { code: 'NDLS', name: 'New Delhi' },
+  'NEW DELHI': { code: 'NDLS', name: 'New Delhi' },
+  'OLD DELHI': { code: 'DLI', name: 'Delhi Jn' },
+  'MUMBAI': { code: 'CSMT', name: 'Mumbai CSMT' },
+  'MUMBAI CENTRAL': { code: 'MMCT', name: 'Mumbai Central' },
+  'BOMBAY': { code: 'CSMT', name: 'Mumbai CSMT' },
+  'KOLKATA': { code: 'HWH', name: 'Howrah Jn' },
+  'HOWRAH': { code: 'HWH', name: 'Howrah Jn' },
+  'CALCUTTA': { code: 'HWH', name: 'Howrah Jn' },
+  'CHENNAI': { code: 'MAS', name: 'Chennai Central' },
+  'MADRAS': { code: 'MAS', name: 'Chennai Central' },
+  'BANGALORE': { code: 'SBC', name: 'Bengaluru City' },
+  'BENGALURU': { code: 'SBC', name: 'Bengaluru City' },
+  'HYDERABAD': { code: 'SC', name: 'Secunderabad Jn' },
+  'SECUNDERABAD': { code: 'SC', name: 'Secunderabad Jn' },
+  'PUNE': { code: 'PUNE', name: 'Pune Jn' },
+  'NAGPUR': { code: 'NGP', name: 'Nagpur Jn' },
+  'KATNI': { code: 'KTE', name: 'Katni Jn' },
+  'JABALPUR': { code: 'JBP', name: 'Jabalpur' },
+  'BHOPAL': { code: 'BPL', name: 'Bhopal Jn' },
+  'ITARSI': { code: 'ET', name: 'Itarsi Jn' },
+  'KANPUR': { code: 'CNB', name: 'Kanpur Central' },
+  'LUCKNOW': { code: 'LKO', name: 'Lucknow Charbagh' },
+  'PATNA': { code: 'PNBE', name: 'Patna Jn' },
+  'AHMEDABAD': { code: 'ADI', name: 'Ahmedabad Jn' },
+  'JAIPUR': { code: 'JP', name: 'Jaipur Jn' },
+  'AGRA': { code: 'AGC', name: 'Agra Cantt' },
+  'GWALIOR': { code: 'GWL', name: 'Gwalior Jn' },
+  'JHANSI': { code: 'VGLB', name: 'Virangana Lakshmibai Jhansi' },
+  'DURG': { code: 'DURG', name: 'Durg Jn' },
+  'ROURKELA': { code: 'ROU', name: 'Rourkela' },
+  'TATANAGAR': { code: 'TATA', name: 'Tatanagar Jn' },
+  'JAMSHEDPUR': { code: 'TATA', name: 'Tatanagar Jn' },
+  'RANCHI': { code: 'RNC', name: 'Ranchi Jn' },
+  'VIJAYAWADA': { code: 'BZA', name: 'Vijayawada Jn' },
+  'SURAT': { code: 'ST', name: 'Surat' },
+  'VADODARA': { code: 'BRC', name: 'Vadodara Jn' },
+  'CHANDIGARH': { code: 'CDG', name: 'Chandigarh' },
+  'AMRITSAR': { code: 'ASR', name: 'Amritsar Jn' },
+  'GORAKHPUR': { code: 'GKP', name: 'Gorakhpur Jn' },
+  'PRAYAGRAJ': { code: 'PRYJ', name: 'Prayagraj Jn' },
+  'ALLAHABAD': { code: 'PRYJ', name: 'Prayagraj Jn' },
+};
+
   // Step 1: Resolve canonical station codes
   const resolveStation = async (input: string) => {
-    const trimmed = input.trim().toUpperCase();
-    // If it looks like a valid 1-5 letter station code
-    if (/^[A-Z]{1,5}$/.test(trimmed)) {
-      return { code: trimmed, name: trimmed };
+    const trimmed = input.trim();
+    const upper = trimmed.toUpperCase();
+
+    // 1. Direct alias match (e.g. 'Delhi', 'Raipur', 'Patna')
+    if (COMMON_CITY_ALIASES[upper]) {
+      return COMMON_CITY_ALIASES[upper];
     }
-    const searchRes = await searchStations(input);
-    if (searchRes.length > 0) {
-      return { code: searchRes[0].code, name: searchRes[0].name };
-    }
-    return { code: trimmed, name: trimmed };
+
+    // 2. Query RailRadar station search
+    try {
+      const searchRes = await searchStations(trimmed);
+      if (searchRes.length > 0) {
+        // Find first active station
+        const active = searchRes.find((s) => s.isActive) || searchRes[0];
+        return { code: active.code, name: active.name };
+      }
+    } catch {}
+
+    // 3. Fallback to raw code
+    return { code: upper, name: upper };
   };
 
   const [originStation, destStation] = await Promise.all([
